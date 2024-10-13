@@ -1,0 +1,14 @@
+services:
+  test-db:
+    image: postgres:15-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: testuser
+      POSTGRES_PASSWORD: testpass
+      POSTGRES_DB: testdb
+    volumes:
+      - test-pgdata:/var/lib/postgresql/data
+
+volumes:
+  test-pgdata:
