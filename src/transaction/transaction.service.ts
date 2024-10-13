@@ -1,9 +1,10 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class TransactionService {
+  private readonly logger = new Logger(TransactionService.name);
   constructor(private prisma: PrismaService) {}
 
   async transferMoney(senderId: string, recipientId: string, amount: number) {
@@ -14,10 +15,16 @@ export class TransactionService {
       });
 
       if (!sender || !recipient) {
+        this.logger.error(
+          `Sender ${senderId} or recipient ${recipientId} not found`,
+        );
         throw new BadRequestException('Sender or recipient not found');
       }
 
       if (sender.balance.toNumber() < amount) {
+        this.logger.error(
+          `Insufficient balance ${sender.balance.toNumber()} of ${senderId}`,
+        );
         throw new BadRequestException('Insufficient balance');
       }
 
@@ -31,13 +38,17 @@ export class TransactionService {
         data: { balance: { increment: amount } },
       });
 
-      return prisma.transaction.create({
+      const transaction = await prisma.transaction.create({
         data: {
           senderId,
           recipientId,
           amount: new Prisma.Decimal(amount),
         },
       });
+      this.logger.log(
+        `Transaction created: ${senderId} sent ${amount} to ${recipientId}`,
+      );
+      return transaction;
     });
   }
 
@@ -49,6 +60,9 @@ export class TransactionService {
       });
 
       if (!transaction || transaction.reversed) {
+        this.logger.error(
+          `Transaction ${transactionId} not found or already reversed`,
+        );
         throw new BadRequestException(
           'Transaction not found or already reversed',
         );
@@ -64,10 +78,12 @@ export class TransactionService {
         data: { balance: { decrement: transaction.amount } },
       });
 
-      return prisma.transaction.update({
+      const update = await prisma.transaction.update({
         where: { id: transactionId },
         data: { reversed: true },
       });
+      this.logger.log(`Transaction reversed: ${transactionId}`);
+      return update;
     });
   }
 }
