@@ -38,6 +38,37 @@ describe('AppController (e2e)', () => {
     expect(response.body.email).toBe('test@example.com');
   });
 
+  it('/api/users (GET)', async () => {
+    await request(app.getHttpServer()).post('/api/users').send({
+      email: 'user1@email.com',
+      password: 'password',
+    });
+    await request(app.getHttpServer()).post('/api/users').send({
+      email: 'user2@email.com',
+      password: 'password',
+    });
+
+    const response = await request(app.getHttpServer())
+      .get('/api/users')
+      .expect(200);
+
+    expect(response.body.length).toBe(2);
+
+    expect(response.body[0]).toHaveProperty('id');
+    expect(response.body[0]).toHaveProperty('email');
+    expect(response.body[0]).toHaveProperty('balance');
+    expect(response.body[0]).toHaveProperty('sentTransactions');
+    expect(response.body[0]).toHaveProperty('receivedTransactions');
+    expect(response.body[0].email).toBe('user1@email.com');
+
+    expect(response.body[1]).toHaveProperty('id');
+    expect(response.body[1]).toHaveProperty('email');
+    expect(response.body[1]).toHaveProperty('balance');
+    expect(response.body[1]).toHaveProperty('sentTransactions');
+    expect(response.body[1]).toHaveProperty('receivedTransactions');
+    expect(response.body[1].email).toBe('user2@email.com');
+  });
+
   it('/api/auth/login (POST)', async () => {
     await request(app.getHttpServer()).post('/api/users').send({
       email: 'test@example.com',

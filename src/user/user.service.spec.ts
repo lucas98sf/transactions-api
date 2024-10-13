@@ -19,6 +19,7 @@ describe('UserService', () => {
             user: {
               create: jest.fn(),
               findUnique: jest.fn(),
+              findMany: jest.fn(),
             },
           },
         },
@@ -78,6 +79,35 @@ describe('UserService', () => {
       expect(prismaService.user.findUnique).toHaveBeenCalledWith({
         where: { email: 'test@example.com' },
       });
+    });
+  });
+
+  describe('getUsers', () => {
+    it('should return all users', async () => {
+      const users = [
+        {
+          id: '1',
+          email: 'user1@email.com',
+          balance: new Prisma.Decimal(0),
+          sentTransactions: [],
+          receivedTransactions: [],
+        },
+        {
+          id: '2',
+          email: 'user2@email.com',
+          balance: new Prisma.Decimal(0),
+          sentTransactions: [],
+          receivedTransactions: [],
+        },
+      ];
+      jest
+        .spyOn(prismaService.user, 'findMany')
+        .mockResolvedValue(users as any);
+
+      const result = await service.getUsers();
+
+      expect(result).toEqual(users);
+      expect(prismaService.user.findMany).toHaveBeenCalled();
     });
   });
 });

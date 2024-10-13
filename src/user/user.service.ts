@@ -28,4 +28,16 @@ export class UserService {
       where: { id },
     });
   }
+
+  async getUsers() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        email: true,
+        balance: true,
+        receivedTransactions: true,
+        sentTransactions: true,
+      },
+    });
+  }
 }
