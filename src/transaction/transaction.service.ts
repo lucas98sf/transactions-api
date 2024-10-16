@@ -9,10 +9,10 @@ export class TransactionService {
 
   async transferMoney(senderId: string, recipientId: string, amount: number) {
     return this.prisma.$transaction(async (prisma) => {
-      const sender = await prisma.user.findUnique({ where: { id: senderId } });
-      const recipient = await prisma.user.findUnique({
-        where: { id: recipientId },
-      });
+      const [sender, recipient] = await Promise.all([
+        prisma.user.findUnique({ where: { id: senderId } }),
+        prisma.user.findUnique({ where: { id: recipientId } }),
+      ]);
 
       if (!sender || !recipient) {
         this.logger.error(
@@ -28,15 +28,16 @@ export class TransactionService {
         throw new BadRequestException('Insufficient balance');
       }
 
-      await prisma.user.update({
-        where: { id: senderId },
-        data: { balance: { decrement: amount } },
-      });
-
-      await prisma.user.update({
-        where: { id: recipientId },
-        data: { balance: { increment: amount } },
-      });
+      await Promise.all([
+        prisma.user.update({
+          where: { id: senderId },
+          data: { balance: { decrement: amount } },
+        }),
+        prisma.user.update({
+          where: { id: recipientId },
+          data: { balance: { increment: amount } },
+        }),
+      ]);
 
       const transaction = await prisma.transaction.create({
         data: {
@@ -45,6 +46,7 @@ export class TransactionService {
           amount: new Prisma.Decimal(amount),
         },
       });
+
       this.logger.log(
         `Transaction created: ${senderId} sent ${amount} to ${recipientId}`,
       );
@@ -68,20 +70,22 @@ export class TransactionService {
         );
       }
 
-      await prisma.user.update({
-        where: { id: transaction.senderId },
-        data: { balance: { increment: transaction.amount } },
-      });
-
-      await prisma.user.update({
-        where: { id: transaction.recipientId },
-        data: { balance: { decrement: transaction.amount } },
-      });
+      await Promise.all([
+        prisma.user.update({
+          where: { id: transaction.senderId },
+          data: { balance: { increment: transaction.amount } },
+        }),
+        prisma.user.update({
+          where: { id: transaction.recipientId },
+          data: { balance: { decrement: transaction.amount } },
+        }),
+      ]);
 
       const update = await prisma.transaction.update({
         where: { id: transactionId },
         data: { reversed: true },
       });
+
       this.logger.log(`Transaction reversed: ${transactionId}`);
       return update;
     });
